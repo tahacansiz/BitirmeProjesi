@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStatus, useOnboarding } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { apiClient } from '../services/api/client';
 import '../styles/pages.css';
 
+interface RecipeDetail {
+  id: string;
+  title: string;
+  ingredients?: string;
+  instructions?: string;
+  prepTimeMin?: number;
+  cookTimeMin?: number;
+  servings?: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 interface WeekMeal {
   id: string;
+  recipeId?: string;
   mealType: string;
   title: string;
   image: string;
@@ -126,6 +141,17 @@ export const DashboardPage: React.FC = () => {
   const [weeklyPlan, setWeeklyPlan] = useState<DayPlan[] | null>(null);
   const [replacingMeal, setReplacingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [recipeDetail, setRecipeDetail] = useState<RecipeDetail | null>(null);
+  const [recipeLoading, setRecipeLoading] = useState(false);
+
+  const handleOpenRecipe = useCallback(async (recipeId?: string) => {
+    if (!recipeId) return;
+    setRecipeLoading(true);
+    setRecipeDetail(null);
+    const res = await apiClient.get<RecipeDetail>(`/meals/recipe/${recipeId}`);
+    if (res.success && res.data) setRecipeDetail(res.data);
+    setRecipeLoading(false);
+  }, []);
 
   if (!isAuthenticated && !authLoading) {
     return <Navigate to="/login" replace />;
@@ -146,12 +172,15 @@ export const DashboardPage: React.FC = () => {
       if (response.success && response.data?.days?.length) {
         const days: DayPlan[] = response.data.days.map((day: any) => {
           const m = day.meals;
+          const toMeal = (slot: any, slotId: string, mealType: string): WeekMeal | null =>
+            slot ? { id: `${day.id}-${slotId}`, recipeId: slot.id, mealType, title: slot.title, image: slot.image, calories: slot.calories, protein: slot.protein, approved: false } : null;
           const meals: WeekMeal[] = [
-            m.breakfast && { id: `${day.id}-1`, mealType: 'BREAKFAST',    title: m.breakfast.title,   image: m.breakfast.image,   calories: m.breakfast.calories,  protein: m.breakfast.protein,  approved: false },
-            m.lunchMain && { id: `${day.id}-2`, mealType: 'LUNCH - MAIN', title: m.lunchMain.title,   image: m.lunchMain.image,   calories: m.lunchMain.calories,  protein: m.lunchMain.protein,  approved: false },
-            m.lunchSide && { id: `${day.id}-3`, mealType: 'LUNCH - SIDE', title: m.lunchSide.title,   image: m.lunchSide.image,   calories: m.lunchSide.calories,  protein: m.lunchSide.protein,  approved: false },
-            m.dinnerMain && { id: `${day.id}-4`, mealType: 'DINNER - MAIN', title: m.dinnerMain.title, image: m.dinnerMain.image, calories: m.dinnerMain.calories, protein: m.dinnerMain.protein, approved: false },
-            m.dinnerSide && { id: `${day.id}-5`, mealType: 'DINNER - SIDE', title: m.dinnerSide.title, image: m.dinnerSide.image, calories: m.dinnerSide.calories, protein: m.dinnerSide.protein, approved: false },
+            toMeal(m.breakfast,  '1', 'BREAKFAST'),
+            toMeal(m.lunchMain,  '2', 'LUNCH - MAIN'),
+            toMeal(m.lunchSide,  '3', 'LUNCH - SIDE'),
+            toMeal(m.dinnerMain, '4', 'DINNER - MAIN'),
+            toMeal(m.dinnerSide, '5', 'DINNER - SIDE'),
+            toMeal(m.snack,      '6', 'SNACK'),
           ].filter(Boolean) as WeekMeal[];
           const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
           return { day: day.dayName, totalCalories, collapsed: false, meals };
@@ -302,7 +331,12 @@ export const DashboardPage: React.FC = () => {
                         {day.meals.map((meal, mealIndex) => (
                           <div key={meal.id} className={`meal-item${meal.approved ? ' meal-item--approved' : ''}`}>
                             <span className="meal-item__type">{meal.mealType}</span>
-                            <div className="meal-item__body">
+                            <div
+                              className="meal-item__body"
+                              style={{ cursor: meal.recipeId ? 'pointer' : 'default' }}
+                              onClick={() => handleOpenRecipe(meal.recipeId)}
+                              title={meal.recipeId ? 'Tarif detayını gör' : undefined}
+                            >
                               <img
                                 src={meal.image}
                                 alt={meal.title}
@@ -369,6 +403,44 @@ export const DashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recipe Detail Modal */}
+      {(recipeDetail || recipeLoading) && (
+        <div className="recipe-modal-overlay" onClick={() => { setRecipeDetail(null); setRecipeLoading(false); }}>
+          <div className="recipe-modal" onClick={e => e.stopPropagation()}>
+            <button className="recipe-modal__close" onClick={() => { setRecipeDetail(null); setRecipeLoading(false); }}>✕</button>
+            {recipeLoading && <LoadingSpinner message="Tarif yükleniyor..." />}
+            {recipeDetail && (
+              <>
+                <h2 className="recipe-modal__title">{recipeDetail.title}</h2>
+                <div className="recipe-modal__meta">
+                  {recipeDetail.prepTimeMin != null && <span>🕐 Hazırlık: {recipeDetail.prepTimeMin} dk</span>}
+                  {recipeDetail.cookTimeMin != null && <span>🍳 Pişirme: {recipeDetail.cookTimeMin} dk</span>}
+                  {recipeDetail.servings != null && <span>🍽️ {recipeDetail.servings} porsiyon</span>}
+                </div>
+                <div className="recipe-modal__nutrition">
+                  <span>{recipeDetail.calories} kcal</span>
+                  <span>Protein: {recipeDetail.protein}g</span>
+                  <span>Karbonhidrat: {recipeDetail.carbs}g</span>
+                  <span>Yağ: {recipeDetail.fat}g</span>
+                </div>
+                {recipeDetail.ingredients && (
+                  <div className="recipe-modal__section">
+                    <h3>Malzemeler</h3>
+                    <p style={{ whiteSpace: 'pre-line' }}>{recipeDetail.ingredients}</p>
+                  </div>
+                )}
+                {recipeDetail.instructions && (
+                  <div className="recipe-modal__section">
+                    <h3>Yapılış</h3>
+                    <p style={{ whiteSpace: 'pre-line' }}>{recipeDetail.instructions}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

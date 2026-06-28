@@ -1,18 +1,21 @@
-"""Meal / weekly-plan routes (AI-backed, currently stubbed)."""
+"""Meal / weekly-plan routes."""
 from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.deps import get_current_user
 from app.models.meal_plan import MealPlan
+from app.models.recipe import Recipe
+from app.models.tarif import Tarif
 from app.models.user import User
 from app.schemas.meal import (
     MealOut,
+    RecipeDetailOut,
     SaveMealPlanRequest,
     WeeklyMealPlanOut,
 )
@@ -88,3 +91,32 @@ def get_saved_plan(
     if plan is None:
         return {"success": True, "plan": None}
     return {"success": True, "id": plan.id, "weekStart": plan.week_start, "plan": plan.plan}
+
+
+@router.get("/recipe/{recipe_id}", response_model=RecipeDetailOut)
+def get_recipe_detail(
+    recipe_id: str,
+    db: Session = Depends(get_db),
+) -> RecipeDetailOut:
+    """Return full recipe detail by joining recipes + tarifler."""
+    tarif = db.get(Tarif, recipe_id)
+    recipe = db.get(Recipe, recipe_id)
+    if tarif is None and recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found.")
+
+    raw_title = tarif.title if tarif else None
+    clean = raw_title.strip().removesuffix("Tarifi").strip() if raw_title else recipe_id
+
+    return RecipeDetailOut(
+        id=recipe_id,
+        title=clean,
+        ingredients=tarif.ingredients if tarif else None,
+        instructions=tarif.instructions if tarif else None,
+        prepTimeMin=tarif.prep_time_min if tarif else None,
+        cookTimeMin=tarif.cook_time_min if tarif else None,
+        servings=tarif.servings if tarif else None,
+        calories=round(float(recipe.calories_pp or 0), 1) if recipe else 0,
+        protein=round(float(recipe.protein_g_pp or 0), 1) if recipe else 0,
+        carbs=round(float(recipe.carbs_g_pp or 0), 1) if recipe else 0,
+        fat=round(float(recipe.fat_g_pp or 0), 1) if recipe else 0,
+    )

@@ -8,13 +8,16 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.tarif import Tarif
 from app.models.user import User
 from app.schemas.meal import (
     DayMealsOut,
     DayPlanOut,
     MealOut,
+    RecipeDetailOut,
     WeeklyMealPlanOut,
 )
 
@@ -161,22 +164,40 @@ def _reasons_for(row: pd.Series, milp_profile: MILPProfile) -> list[str]:
     return reasons
 
 
-def _row_to_meal(recipe_id, category: str, df: pd.DataFrame, milp_profile: MILPProfile) -> Optional[MealOut]:
+def _clean_title(raw: Optional[str], recipe_id: str) -> str:
+    """Strip trailing 'Tarifi' suffix and return a clean title."""
+    if not raw:
+        return recipe_id
+    title = raw.strip()
+    if title.endswith("Tarifi"):
+        title = title[:-6].strip()
+    return title or recipe_id
+
+
+def _row_to_meal(
+    recipe_id,
+    category: str,
+    df: pd.DataFrame,
+    milp_profile: MILPProfile,
+    title_map: dict[str, str] | None = None,
+) -> Optional[MealOut]:
     rows = df[df["recipe_id"] == recipe_id]
     if rows.empty:
         return None
     row = rows.iloc[0]
+    rid = str(recipe_id)
+    title = (title_map or {}).get(rid) or f"{(row.get('category') or 'Tarif').title()} #{rid}"
     return MealOut(
-        id=str(recipe_id),
-        title=f"{(row.get('category') or 'Recipe').title()} #{recipe_id}",
-        image=f"https://placehold.co/600x400?text=Recipe+{recipe_id}",
+        id=rid,
+        title=title,
+        image=f"https://placehold.co/600x400?text={title[:30].replace(' ', '+')}",
         calories=round(float(row.get("calories_pp") or 0), 1),
         protein=round(float(row.get("protein_g_pp") or 0), 1),
         carbs=round(float(row.get("carbs_g_pp") or 0), 1),
         fat=round(float(row.get("fat_g_pp") or 0), 1),
         description=(
-            f"A {category} dish providing "
-            f"{round(float(row.get('calories_pp') or 0))} kcal per serving."
+            f"Kişi başı {round(float(row.get('calories_pp') or 0))} kcal sağlayan "
+            f"bir {category} tarifi."
         ),
         recommendationReasons=_reasons_for(row, milp_profile),
         category=category,  # type: ignore[arg-type]
@@ -224,7 +245,6 @@ def generate_weekly_plan(
     )
 
     if sonuc.amac_degeri is None or not sonuc.plan:
-        # Fallback: return empty plan with a clear indication
         return WeeklyMealPlanOut(
             id=f"plan-{user.id}-{start_date.isoformat()}",
             userId=str(user.id),
@@ -232,17 +252,31 @@ def generate_weekly_plan(
             days=[],
         )
 
+    # Collect all recipe_ids selected by MILP, then fetch titles from tarifler in one query
+    all_recipe_ids = [
+        entry["recipe_id"]
+        for gun in sonuc.plan
+        for entry in gun["ogunler"].values()
+        if entry
+    ]
+    tarifler = db.execute(
+        select(Tarif.id, Tarif.title).where(Tarif.id.in_(all_recipe_ids))
+    ).fetchall()
+    title_map: dict[str, str] = {
+        row.id: _clean_title(row.title, row.id) for row in tarifler
+    }
+
     days: list[DayPlanOut] = []
     for gun in sonuc.plan:
         d = gun["gun"] - 1  # 0-indexed
         day_date = start_date + timedelta(days=d)
         ogunler = gun["ogunler"]
 
-        def get_meal(slot: str, category: str) -> Optional[MealOut]:
-            entry = ogunler.get(slot)
+        def get_meal(slot: str, category: str, _ogunler=ogunler) -> Optional[MealOut]:
+            entry = _ogunler.get(slot)
             if not entry:
                 return None
-            return _row_to_meal(entry["recipe_id"], category, df, milp_profile)
+            return _row_to_meal(entry["recipe_id"], category, df, milp_profile, title_map)
 
         breakfast = get_meal("kahvalti", "breakfast")
         lunch_main = get_meal("ogle_ana", "main")

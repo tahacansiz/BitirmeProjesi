@@ -12,6 +12,20 @@ from pydantic import BaseModel
 MealCategory = Literal["breakfast", "main", "side", "snack"]
 
 
+class RecipeDetailOut(BaseModel):
+    id: str
+    title: str
+    ingredients: Optional[str] = None
+    instructions: Optional[str] = None
+    prepTimeMin: Optional[int] = None
+    cookTimeMin: Optional[int] = None
+    servings: Optional[int] = None
+    calories: float
+    protein: float
+    carbs: float
+    fat: float
+
+
 class MealOut(BaseModel):
     id: str
     title: str
