@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStatus, useOnboarding } from '../hooks/useAuth';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { apiClient } from '../services/api/client';
 import '../styles/pages.css';
 
 interface WeekMeal {
@@ -138,20 +139,41 @@ export const DashboardPage: React.FC = () => {
     return <LoadingSpinner message="Loading..." />;
   }
 
-  const handleGenerate = () => {
+  const fetchPlanFromBackend = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
+    try {
+      const response = await apiClient.get<any>('/meals/weekly-plan');
+      if (response.success && response.data?.days?.length) {
+        const days: DayPlan[] = response.data.days.map((day: any) => {
+          const m = day.meals;
+          const meals: WeekMeal[] = [
+            m.breakfast && { id: `${day.id}-1`, mealType: 'BREAKFAST',    title: m.breakfast.title,   image: m.breakfast.image,   calories: m.breakfast.calories,  protein: m.breakfast.protein,  approved: false },
+            m.lunchMain && { id: `${day.id}-2`, mealType: 'LUNCH - MAIN', title: m.lunchMain.title,   image: m.lunchMain.image,   calories: m.lunchMain.calories,  protein: m.lunchMain.protein,  approved: false },
+            m.lunchSide && { id: `${day.id}-3`, mealType: 'LUNCH - SIDE', title: m.lunchSide.title,   image: m.lunchSide.image,   calories: m.lunchSide.calories,  protein: m.lunchSide.protein,  approved: false },
+            m.dinnerMain && { id: `${day.id}-4`, mealType: 'DINNER - MAIN', title: m.dinnerMain.title, image: m.dinnerMain.image, calories: m.dinnerMain.calories, protein: m.dinnerMain.protein, approved: false },
+            m.dinnerSide && { id: `${day.id}-5`, mealType: 'DINNER - SIDE', title: m.dinnerSide.title, image: m.dinnerSide.image, calories: m.dinnerSide.calories, protein: m.dinnerSide.protein, approved: false },
+          ].filter(Boolean) as WeekMeal[];
+          const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+          return { day: day.dayName, totalCalories, collapsed: false, meals };
+        });
+        setWeeklyPlan(days);
+      } else {
+        // Fallback to mock if backend fails
+        setWeeklyPlan(generateWeeklyPlan());
+      }
+    } catch {
       setWeeklyPlan(generateWeeklyPlan());
+    } finally {
       setIsGenerating(false);
-    }, 1200);
+    }
+  };
+
+  const handleGenerate = () => {
+    fetchPlanFromBackend();
   };
 
   const handleRegenerate = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setWeeklyPlan(generateWeeklyPlan());
-      setIsGenerating(false);
-    }, 1200);
+    fetchPlanFromBackend();
   };
 
   const handleApprove = (dayIndex: number, mealIndex: number) => {

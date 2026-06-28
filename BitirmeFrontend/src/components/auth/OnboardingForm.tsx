@@ -24,7 +24,7 @@ export const OnboardingForm: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const validateForm = (): boolean => {
     const formErrors: Record<string, string> = {};
@@ -64,6 +64,7 @@ export const OnboardingForm: React.FC = () => {
       });
 
       if (success) {
+        refreshUser();
         navigate('/dashboard');
       } else {
         setSubmitError('Failed to complete onboarding. Please try again.');

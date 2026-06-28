@@ -62,7 +62,7 @@ def save_recipe(
     return {"success": True}
 
 
-@router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{recipe_id}", status_code=status.HTTP_200_OK)
 def remove_saved_recipe(
     recipe_id: int,
     current_user: User = Depends(get_current_user),

@@ -90,7 +90,7 @@ def update_recipe(recipe_id: int, payload: RecipeUpdate, db: Session = Depends(g
     return recipe
 
 
-@router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{recipe_id}", status_code=status.HTTP_200_OK)
 def delete_recipe(recipe_id: int, db: Session = Depends(get_db)) -> None:
     recipe = db.get(Recipe, recipe_id)
     if recipe is None:

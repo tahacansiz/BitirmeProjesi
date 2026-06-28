@@ -66,6 +66,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
+  const refreshUser = useCallback(() => {
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user && authService.isAuthenticated(),
@@ -73,6 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     clearError,
+    refreshUser,
     error,
   };
 

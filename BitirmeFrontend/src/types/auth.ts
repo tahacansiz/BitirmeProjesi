@@ -22,6 +22,7 @@ export interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  refreshUser: () => void;
   error: string | null;
 }
 
