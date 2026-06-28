@@ -1,0 +1,6 @@
+pandas
+numpy
+pyarrow
+pulp>=2.8
+highspy
+gurobipy
