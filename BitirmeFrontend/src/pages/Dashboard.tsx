@@ -140,6 +140,8 @@ export const DashboardPage: React.FC = () => {
   const { needsOnboarding } = useOnboarding();
   const [weeklyPlan, setWeeklyPlan] = useState<DayPlan[] | null>(null);
   const [replacingMeal, setReplacingMeal] = useState<{ dayIndex: number; mealIndex: number } | null>(null);
+  const [replacementOptions, setReplacementOptions] = useState<WeekMeal[]>([]);
+  const [replacementLoading, setReplacementLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [recipeDetail, setRecipeDetail] = useState<RecipeDetail | null>(null);
   const [recipeLoading, setRecipeLoading] = useState(false);
@@ -230,11 +232,69 @@ export const DashboardPage: React.FC = () => {
     });
   };
 
-  const handleOpenReplace = (dayIndex: number, mealIndex: number) => {
-    setReplacingMeal({ dayIndex, mealIndex });
+  // Maps a displayed meal slot label to the backend MealCategory + the
+  // mock pool used only as a fallback when the backend call fails.
+  const CATEGORY_MAP: Record<string, { category: string; fallback: Omit<WeekMeal, 'id' | 'approved'>[] }> = {
+    'KAHVALTI': { category: 'breakfast', fallback: ALL_BREAKFASTS },
+    'ÖĞLE YEMEĞİ': { category: 'main', fallback: ALL_LUNCH_MAINS },
+    'ÖĞLE YEMEĞİ - YAN': { category: 'side', fallback: ALL_LUNCH_SIDES },
+    'AKŞAM YEMEĞİ': { category: 'main', fallback: ALL_DINNER_MAINS },
+    'AKŞAM YEMEĞİ - YAN': { category: 'side', fallback: ALL_DINNER_SIDES },
+    'ARA ÖĞÜN': { category: 'snack', fallback: [] },
+    // English fallbacks (used when backend is down and mock plan loaded)
+    'BREAKFAST': { category: 'breakfast', fallback: ALL_BREAKFASTS },
+    'LUNCH - MAIN': { category: 'main', fallback: ALL_LUNCH_MAINS },
+    'LUNCH - SIDE': { category: 'side', fallback: ALL_LUNCH_SIDES },
+    'DINNER - MAIN': { category: 'main', fallback: ALL_DINNER_MAINS },
+    'DINNER - SIDE': { category: 'side', fallback: ALL_DINNER_SIDES },
   };
 
-  const handleSelectReplacement = (replacement: Omit<WeekMeal, 'id' | 'approved'>) => {
+  const handleOpenReplace = async (dayIndex: number, mealIndex: number) => {
+    setReplacingMeal({ dayIndex, mealIndex });
+    setReplacementOptions([]);
+    if (!weeklyPlan) return;
+    const meal = weeklyPlan[dayIndex].meals[mealIndex];
+    const mapping = CATEGORY_MAP[meal.mealType];
+    if (!mapping) return;
+
+    setReplacementLoading(true);
+    try {
+      const params = new URLSearchParams({ category: mapping.category });
+      if (meal.recipeId) params.set('exclude_meal_id', meal.recipeId);
+      const res = await apiClient.get<any[]>(`/meals/alternatives?${params.toString()}`);
+      if (res.success && res.data && res.data.length > 0) {
+        setReplacementOptions(
+          res.data.map((m) => ({
+            id: m.id,
+            recipeId: m.id,
+            mealType: meal.mealType,
+            title: m.title,
+            image: m.image,
+            calories: m.calories,
+            protein: m.protein,
+            approved: false,
+          }))
+        );
+      } else {
+        // Fallback to mock pool only if backend has no real alternatives
+        setReplacementOptions(
+          mapping.fallback
+            .filter((m) => m.title !== meal.title)
+            .map((m, idx) => ({ ...m, id: `fallback-${idx}`, approved: false }))
+        );
+      }
+    } catch {
+      setReplacementOptions(
+        mapping.fallback
+          .filter((m) => m.title !== meal.title)
+          .map((m, idx) => ({ ...m, id: `fallback-${idx}`, approved: false }))
+      );
+    } finally {
+      setReplacementLoading(false);
+    }
+  };
+
+  const handleSelectReplacement = (replacement: WeekMeal) => {
     if (!replacingMeal) return;
     const { dayIndex, mealIndex } = replacingMeal;
     setWeeklyPlan((prev) => {
@@ -252,31 +312,8 @@ export const DashboardPage: React.FC = () => {
       });
     });
     setReplacingMeal(null);
+    setReplacementOptions([]);
   };
-
-  const currentMealType = replacingMeal && weeklyPlan
-    ? weeklyPlan[replacingMeal.dayIndex].meals[replacingMeal.mealIndex].mealType
-    : null;
-  const currentMealTitle = replacingMeal && weeklyPlan
-    ? weeklyPlan[replacingMeal.dayIndex].meals[replacingMeal.mealIndex].title
-    : null;
-
-  const POOL_MAP: Record<string, Omit<WeekMeal, 'id' | 'approved'>[]> = {
-    'KAHVALTI': ALL_BREAKFASTS,
-    'ÖĞLE YEMEĞİ': ALL_LUNCH_MAINS,
-    'ÖĞLE YEMEĞİ - YAN': ALL_LUNCH_SIDES,
-    'AKŞAM YEMEĞİ': ALL_DINNER_MAINS,
-    'AKŞAM YEMEĞİ - YAN': ALL_DINNER_SIDES,
-    // English fallbacks (used when backend is down and mock data loads)
-    'BREAKFAST': ALL_BREAKFASTS,
-    'LUNCH - MAIN': ALL_LUNCH_MAINS,
-    'LUNCH - SIDE': ALL_LUNCH_SIDES,
-    'DINNER - MAIN': ALL_DINNER_MAINS,
-    'DINNER - SIDE': ALL_DINNER_SIDES,
-  };
-  const replacementOptions = currentMealType
-    ? (POOL_MAP[currentMealType] || []).filter((m) => m.title !== currentMealTitle)
-    : [];
 
   return (
     <div className="weekly-page">
@@ -381,19 +418,20 @@ export const DashboardPage: React.FC = () => {
 
       {/* Replacement Modal */}
       {replacingMeal !== null && (
-        <div className="replacement-modal__backdrop" onClick={() => setReplacingMeal(null)}>
+        <div className="replacement-modal__backdrop" onClick={() => { setReplacingMeal(null); setReplacementOptions([]); }}>
           <div className="replacement-modal" onClick={(e) => e.stopPropagation()}>
             <div className="replacement-modal__header">
               <h3 className="replacement-modal__title">Alternatif Seç</h3>
-              <button className="replacement-modal__close" onClick={() => setReplacingMeal(null)}>
+              <button className="replacement-modal__close" onClick={() => { setReplacingMeal(null); setReplacementOptions([]); }}>
                 ✕
               </button>
             </div>
             <div className="replacement-modal__list">
-              {replacementOptions.length === 0 && (
+              {replacementLoading && <LoadingSpinner message="Alternatifler yükleniyor..." />}
+              {!replacementLoading && replacementOptions.length === 0 && (
                 <p style={{ color: '#6b7280', padding: '1rem' }}>Bu öğün türü için alternatif bulunamadı.</p>
               )}
-              {replacementOptions.map((option, idx) => (
+              {!replacementLoading && replacementOptions.map((option, idx) => (
                 <div key={`${option.title}-${idx}`} className="replacement-option">
                   <img src={option.image} alt={option.title} className="replacement-option__img" />
                   <div className="replacement-option__info">
