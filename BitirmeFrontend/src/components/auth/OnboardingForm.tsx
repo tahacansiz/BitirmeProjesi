@@ -1,8 +1,3 @@
-/**
- * Onboarding Form Component
- * Collects user health information for personalization
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -29,17 +24,14 @@ export const OnboardingForm: React.FC = () => {
   const validateForm = (): boolean => {
     const formErrors: Record<string, string> = {};
 
-    if (!age || parseInt(age) < 13 || parseInt(age) > 120) {
-      formErrors.age = 'Please enter a valid age (13-120)';
-    }
+    if (!age || parseInt(age) < 13 || parseInt(age) > 120)
+      formErrors.age = 'Lütfen geçerli bir yaş giriniz (13-120)';
 
-    if (!height || parseInt(height) < 100 || parseInt(height) > 250) {
-      formErrors.height = 'Please enter height in cm (100-250)';
-    }
+    if (!height || parseInt(height) < 100 || parseInt(height) > 250)
+      formErrors.height = 'Lütfen boy bilgisini cm cinsinden giriniz (100-250)';
 
-    if (!weight || parseInt(weight) < 30 || parseInt(weight) > 300) {
-      formErrors.weight = 'Please enter weight in kg (30-300)';
-    }
+    if (!weight || parseInt(weight) < 30 || parseInt(weight) > 300)
+      formErrors.weight = 'Lütfen kilo bilgisini kg cinsinden giriniz (30-300)';
 
     setErrors(formErrors);
     return Object.keys(formErrors).length === 0;
@@ -47,7 +39,6 @@ export const OnboardingForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm() || !user) return;
 
     setIsLoading(true);
@@ -67,12 +58,10 @@ export const OnboardingForm: React.FC = () => {
         refreshUser();
         navigate('/dashboard');
       } else {
-        setSubmitError('Failed to complete onboarding. Please try again.');
+        setSubmitError('Kurulum tamamlanamadı. Lütfen tekrar deneyin.');
       }
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'An error occurred'
-      );
+      setSubmitError(err instanceof Error ? err.message : 'Bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
@@ -81,115 +70,72 @@ export const OnboardingForm: React.FC = () => {
   return (
     <div className="onboarding-form">
       <div className="onboarding-form__header">
-        <h1 className="onboarding-form__title">Get Started</h1>
+        <h1 className="onboarding-form__title">Başlayalım</h1>
         <p className="onboarding-form__subtitle">
-          Tell us about yourself so we can personalize your nutrition plan
+          Size özel beslenme planı oluşturabilmemiz için birkaç bilgiye ihtiyacımız var
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="onboarding-form__form">
         {submitError && (
-          <Alert
-            type="error"
-            message={submitError}
-            onClose={() => setSubmitError(null)}
-            autoClose={false}
-          />
+          <Alert type="error" message={submitError} onClose={() => setSubmitError(null)} autoClose={false} />
         )}
 
         <div className="onboarding-form__section">
-          <h2 className="onboarding-form__section-title">Personal Information</h2>
+          <h2 className="onboarding-form__section-title">Kişisel Bilgiler</h2>
 
-          <Input
-            label="Age"
-            type="number"
-            min="13"
-            max="120"
-            value={age}
-            onChange={(e) => setAge(e.target.value)}
-            error={errors.age}
-            disabled={isLoading}
-          />
+          <Input label="Yaş" type="number" min="13" max="120"
+            value={age} onChange={(e) => setAge(e.target.value)}
+            error={errors.age} disabled={isLoading} />
 
           <div className="onboarding-form__row">
-            <Input
-              label="Height (cm)"
-              type="number"
-              min="100"
-              max="250"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              error={errors.height}
-              disabled={isLoading}
-            />
-
-            <Input
-              label="Weight (kg)"
-              type="number"
-              min="30"
-              max="300"
-              step="0.1"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              error={errors.weight}
-              disabled={isLoading}
-            />
+            <Input label="Boy (cm)" type="number" min="100" max="250"
+              value={height} onChange={(e) => setHeight(e.target.value)}
+              error={errors.height} disabled={isLoading} />
+            <Input label="Kilo (kg)" type="number" min="30" max="300" step="0.1"
+              value={weight} onChange={(e) => setWeight(e.target.value)}
+              error={errors.weight} disabled={isLoading} />
           </div>
         </div>
 
         <div className="onboarding-form__section">
-          <h2 className="onboarding-form__section-title">Lifestyle</h2>
+          <h2 className="onboarding-form__section-title">Yaşam Tarzı</h2>
 
           <div className="onboarding-form__group">
-            <label className="onboarding-form__label">Gender</label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as any)}
-              className="onboarding-form__select"
-              disabled={isLoading}
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+            <label className="onboarding-form__label">Cinsiyet</label>
+            <select value={gender} onChange={(e) => setGender(e.target.value as any)}
+              className="onboarding-form__select" disabled={isLoading}>
+              <option value="male">Erkek</option>
+              <option value="female">Kadın</option>
+              <option value="other">Diğer</option>
             </select>
           </div>
 
           <div className="onboarding-form__group">
-            <label className="onboarding-form__label">Activity Level</label>
-            <select
-              value={activityLevel}
-              onChange={(e) => setActivityLevel(e.target.value as any)}
-              className="onboarding-form__select"
-              disabled={isLoading}
-            >
-              <option value="low">Low (sedentary)</option>
-              <option value="medium">Medium (lightly active)</option>
-              <option value="high">High (very active)</option>
+            <label className="onboarding-form__label">Aktivite Düzeyi</label>
+            <select value={activityLevel} onChange={(e) => setActivityLevel(e.target.value as any)}
+              className="onboarding-form__select" disabled={isLoading}>
+              <option value="low">Düşük (hareketsiz)</option>
+              <option value="medium">Orta (hafif aktif)</option>
+              <option value="high">Yüksek (çok aktif)</option>
             </select>
           </div>
         </div>
 
         <div className="onboarding-form__section">
-          <h2 className="onboarding-form__section-title">Health</h2>
-
+          <h2 className="onboarding-form__section-title">Sağlık</h2>
           <Input
-            label="Health Conditions (e.g., diabetes, allergies)"
+            label="Sağlık Durumları (örn: diyabet, çölyak)"
             type="text"
             value={healthCondition}
             onChange={(e) => setHealthCondition(e.target.value)}
-            placeholder="None / Type 2 Diabetes / Nut Allergies"
+            placeholder="Yok / Tip 2 Diyabet / Çölyak"
             disabled={isLoading}
           />
         </div>
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="large"
-          fullWidth
-          isLoading={isLoading}
-        >
-          Complete Setup
+        <Button type="submit" variant="primary" size="large" fullWidth isLoading={isLoading}>
+          Kurulumu Tamamla
         </Button>
       </form>
     </div>

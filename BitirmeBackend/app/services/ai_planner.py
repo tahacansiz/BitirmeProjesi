@@ -93,7 +93,7 @@ _HEALTH_MAP = {
     "anemia": "anemia",
 }
 
-DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+DAY_NAMES = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 
 # MILP slot → frontend category
 _SLOT_TO_CATEGORY = {
@@ -285,7 +285,7 @@ def generate_weekly_plan(
         dinner_side = get_meal("aksam_yan", "side")
         snack = get_meal("ara_ogun", "snack")
 
-        if not (breakfast and lunch_main and dinner_main and snack):
+        if not breakfast:
             continue
 
         days.append(

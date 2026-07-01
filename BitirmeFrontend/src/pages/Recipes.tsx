@@ -1,8 +1,3 @@
-/**
- * Recipes Page
- * Browse and search all available recipes
- */
-
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStatus, useOnboarding } from '../hooks/useAuth';
@@ -19,15 +14,8 @@ export const RecipesPage: React.FC = () => {
   const { savedRecipes, saveRecipe, removeSavedRecipe } = useSavedRecipes();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Redirect if not authenticated
-  if (!isAuthenticated && !authLoading) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Redirect if onboarding not completed
-  if (needsOnboarding && !authLoading) {
-    return <Navigate to="/onboarding" replace />;
-  }
+  if (!isAuthenticated && !authLoading) return <Navigate to="/login" replace />;
+  if (needsOnboarding && !authLoading) return <Navigate to="/onboarding" replace />;
 
   const filteredRecipes = recipes.filter(
     (recipe) =>
@@ -41,23 +29,23 @@ export const RecipesPage: React.FC = () => {
     <div className="recipes-page">
       <div className="recipes-page__container">
         <section className="recipes-page__header">
-          <h1 className="recipes-page__title">Recipe Library</h1>
+          <h1 className="recipes-page__title">Tarif Kütüphanesi</h1>
           <p className="recipes-page__subtitle">
-            Explore {recipes.length} nutritious recipes
+            {recipes.length} sağlıklı tarifi keşfedin
           </p>
         </section>
 
         <div className="recipes-page__search">
           <Input
             type="text"
-            placeholder="Search recipes..."
+            placeholder="Tarif ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         {recipesLoading ? (
-          <LoadingSpinner message="Loading recipes..." />
+          <LoadingSpinner message="Tarifler yükleniyor..." />
         ) : (
           <RecipeGrid
             recipes={filteredRecipes}
@@ -66,8 +54,8 @@ export const RecipesPage: React.FC = () => {
             onRemove={removeSavedRecipe}
             emptyMessage={
               searchQuery
-                ? `No recipes found matching "${searchQuery}"`
-                : 'No recipes available'
+                ? `"${searchQuery}" için tarif bulunamadı`
+                : 'Henüz tarif bulunmuyor'
             }
           />
         )}

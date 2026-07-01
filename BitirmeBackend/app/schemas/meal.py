@@ -15,8 +15,8 @@ MealCategory = Literal["breakfast", "main", "side", "snack"]
 class RecipeDetailOut(BaseModel):
     id: str
     title: str
-    ingredients: Optional[str] = None
-    instructions: Optional[str] = None
+    ingredients: list[str] = []   # parsed: ["4 yemek kaşığı un", ...]
+    instructions: list[str] = []  # parsed: ["Adım 1 metni", ...]
     prepTimeMin: Optional[int] = None
     cookTimeMin: Optional[int] = None
     servings: Optional[int] = None
@@ -41,11 +41,11 @@ class MealOut(BaseModel):
 
 class DayMealsOut(BaseModel):
     breakfast: MealOut
-    lunchMain: MealOut
+    lunchMain: Optional[MealOut] = None
     lunchSide: Optional[MealOut] = None
-    dinnerMain: MealOut
+    dinnerMain: Optional[MealOut] = None
     dinnerSide: Optional[MealOut] = None
-    snack: MealOut
+    snack: Optional[MealOut] = None
 
 
 class DayPlanOut(BaseModel):

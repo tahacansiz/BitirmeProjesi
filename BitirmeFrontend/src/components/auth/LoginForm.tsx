@@ -1,8 +1,3 @@
-/**
- * Login Form Component
- * Handles user authentication
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -12,8 +7,8 @@ import { Alert } from '../common/Alert';
 import '../../styles/components.css';
 
 export const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState('john@example.com'); // Pre-filled for demo
-  const [password, setPassword] = useState('password123'); // Pre-filled for demo
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const { login, isLoading, error: authError, clearError } = useAuth();
@@ -22,11 +17,11 @@ export const LoginForm: React.FC = () => {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!email) errors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Email is invalid';
+    if (!email) errors.email = 'E-posta adresi gereklidir';
+    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Geçerli bir e-posta adresi giriniz';
 
-    if (!password) errors.password = 'Password is required';
-    else if (password.length < 6) errors.password = 'Password must be at least 6 characters';
+    if (!password) errors.password = 'Şifre gereklidir';
+    else if (password.length < 6) errors.password = 'Şifre en az 6 karakter olmalıdır';
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -34,71 +29,56 @@ export const LoginForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
-
     try {
       await login({ email, password });
       navigate('/');
-    } catch (err) {
-      // Error is already in auth context
-    }
+    } catch (err) {}
   };
 
   return (
     <div className="login-form">
-      <h1 className="login-form__title">Welcome to NutriFlow</h1>
-      <p className="login-form__subtitle">Your personal nutrition guide</p>
+      <h1 className="login-form__title">NutriFlow'a Hoş Geldiniz</h1>
+      <p className="login-form__subtitle">Kişisel beslenme rehberiniz</p>
 
       <form onSubmit={handleSubmit} className="login-form__form">
         {authError && (
           <Alert
             type="error"
-            message={authError}
+            message="E-posta veya şifre hatalı"
             onClose={clearError}
             autoClose={false}
           />
         )}
 
         <Input
-          label="Email"
+          label="E-posta"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           error={validationErrors.email}
-          placeholder="your@email.com"
+          placeholder="ornek@email.com"
           disabled={isLoading}
         />
 
         <Input
-          label="Password"
+          label="Şifre"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={validationErrors.password}
           placeholder="••••••••"
           disabled={isLoading}
-          helpText="Demo: password123"
         />
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="large"
-          fullWidth
-          isLoading={isLoading}
-        >
-          Sign In
+        <Button type="submit" variant="primary" size="large" fullWidth isLoading={isLoading}>
+          Giriş Yap
         </Button>
       </form>
 
       <div className="login-form__footer">
         <p className="login-form__demo-info">
-          Demo credentials (for testing):
-          <br />
-          Email: john@example.com
-          <br />
-          Password: password123
+          Test hesabı: test@test.com / 123456
         </p>
       </div>
     </div>

@@ -8,8 +8,8 @@ import '../styles/pages.css';
 interface RecipeDetail {
   id: string;
   title: string;
-  ingredients?: string;
-  instructions?: string;
+  ingredients: string[];
+  instructions: string[];
   prepTimeMin?: number;
   cookTimeMin?: number;
   servings?: number;
@@ -162,7 +162,7 @@ export const DashboardPage: React.FC = () => {
   }
 
   if (authLoading) {
-    return <LoadingSpinner message="Loading..." />;
+    return <LoadingSpinner message="Yükleniyor..." />;
   }
 
   const fetchPlanFromBackend = async () => {
@@ -175,14 +175,14 @@ export const DashboardPage: React.FC = () => {
           const toMeal = (slot: any, slotId: string, mealType: string): WeekMeal | null =>
             slot ? { id: `${day.id}-${slotId}`, recipeId: slot.id, mealType, title: slot.title, image: slot.image, calories: slot.calories, protein: slot.protein, approved: false } : null;
           const meals: WeekMeal[] = [
-            toMeal(m.breakfast,  '1', 'BREAKFAST'),
-            toMeal(m.lunchMain,  '2', 'LUNCH - MAIN'),
-            toMeal(m.lunchSide,  '3', 'LUNCH - SIDE'),
-            toMeal(m.dinnerMain, '4', 'DINNER - MAIN'),
-            toMeal(m.dinnerSide, '5', 'DINNER - SIDE'),
-            toMeal(m.snack,      '6', 'SNACK'),
+            toMeal(m.breakfast,  '1', 'KAHVALTI'),
+            toMeal(m.lunchMain,  '2', 'ÖĞLE YEMEĞİ'),
+            toMeal(m.lunchSide,  '3', 'ÖĞLE YEMEĞİ - YAN'),
+            toMeal(m.dinnerMain, '4', 'AKŞAM YEMEĞİ'),
+            toMeal(m.dinnerSide, '5', 'AKŞAM YEMEĞİ - YAN'),
+            toMeal(m.snack,      '6', 'ARA ÖĞÜN'),
           ].filter(Boolean) as WeekMeal[];
-          const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+          const totalCalories = Math.round(meals.reduce((sum, meal) => sum + meal.calories, 0));
           return { day: day.dayName, totalCalories, collapsed: false, meals };
         });
         setWeeklyPlan(days);
@@ -262,6 +262,12 @@ export const DashboardPage: React.FC = () => {
     : null;
 
   const POOL_MAP: Record<string, Omit<WeekMeal, 'id' | 'approved'>[]> = {
+    'KAHVALTI': ALL_BREAKFASTS,
+    'ÖĞLE YEMEĞİ': ALL_LUNCH_MAINS,
+    'ÖĞLE YEMEĞİ - YAN': ALL_LUNCH_SIDES,
+    'AKŞAM YEMEĞİ': ALL_DINNER_MAINS,
+    'AKŞAM YEMEĞİ - YAN': ALL_DINNER_SIDES,
+    // English fallbacks (used when backend is down and mock data loads)
     'BREAKFAST': ALL_BREAKFASTS,
     'LUNCH - MAIN': ALL_LUNCH_MAINS,
     'LUNCH - SIDE': ALL_LUNCH_SIDES,
@@ -279,17 +285,17 @@ export const DashboardPage: React.FC = () => {
         <div className="weekly-page__generate-wrap">
           <div className="weekly-page__generate-card">
             <h1 className="weekly-page__generate-title">
-              Hi {user?.firstName || 'there'}! Let's plan your week 🍽️
+              Merhaba {user?.firstName || ''}! Haftanı planlayalım 🍽️
             </h1>
             <p className="weekly-page__generate-desc">
-              Generate a personalized 7-day meal plan, review it, swap meals you don't like, and approve your final selections.
+              Sana özel 7 günlük yemek planı oluştur, beğenmediklerini değiştir ve son seçimlerini onayla.
             </p>
             <button
               className="weekly-page__generate-btn"
               onClick={handleGenerate}
               disabled={isGenerating}
             >
-              {isGenerating ? 'Generating...' : 'Generate Weekly Meal Plan'}
+              {isGenerating ? 'Oluşturuluyor...' : 'Haftalık Yemek Planı Oluştur'}
             </button>
           </div>
         </div>
@@ -300,15 +306,15 @@ export const DashboardPage: React.FC = () => {
         <div className="weekly-page__plan">
           {isGenerating && (
             <div className="weekly-page__regenerating">
-              <LoadingSpinner message="Generating your plan..." />
+              <LoadingSpinner message="Planın oluşturuluyor..." />
             </div>
           )}
           {!isGenerating && (
             <>
               <div className="weekly-page__plan-header">
-                <h2 className="weekly-page__plan-title">Your Weekly Plan</h2>
+                <h2 className="weekly-page__plan-title">Haftalık Planın</h2>
                 <button className="weekly-page__regen-btn" onClick={handleRegenerate}>
-                  Regenerate Plan
+                  Yeniden Oluştur
                 </button>
               </div>
               <div className="weekly-page__days-scroll">
@@ -352,13 +358,13 @@ export const DashboardPage: React.FC = () => {
                                 className="meal-item__replace-btn"
                                 onClick={() => handleOpenReplace(dayIndex, mealIndex)}
                               >
-                                Replace
+                                Değiştir
                               </button>
                               <button
                                 className={`meal-item__approve-btn${meal.approved ? ' meal-item__approve-btn--done' : ''}`}
                                 onClick={() => handleApprove(dayIndex, mealIndex)}
                               >
-                                {meal.approved ? 'Approved ✓' : 'Approve'}
+                                {meal.approved ? 'Onaylandı ✓' : 'Onayla'}
                               </button>
                             </div>
                           </div>
@@ -378,14 +384,14 @@ export const DashboardPage: React.FC = () => {
         <div className="replacement-modal__backdrop" onClick={() => setReplacingMeal(null)}>
           <div className="replacement-modal" onClick={(e) => e.stopPropagation()}>
             <div className="replacement-modal__header">
-              <h3 className="replacement-modal__title">Choose a Replacement</h3>
+              <h3 className="replacement-modal__title">Alternatif Seç</h3>
               <button className="replacement-modal__close" onClick={() => setReplacingMeal(null)}>
                 ✕
               </button>
             </div>
             <div className="replacement-modal__list">
               {replacementOptions.length === 0 && (
-                <p style={{ color: '#6b7280', padding: '1rem' }}>No alternatives available for this meal type.</p>
+                <p style={{ color: '#6b7280', padding: '1rem' }}>Bu öğün türü için alternatif bulunamadı.</p>
               )}
               {replacementOptions.map((option, idx) => (
                 <div key={`${option.title}-${idx}`} className="replacement-option">
@@ -398,7 +404,7 @@ export const DashboardPage: React.FC = () => {
                     className="replacement-option__select-btn"
                     onClick={() => handleSelectReplacement(option)}
                   >
-                    Select
+                    Seç
                   </button>
                 </div>
               ))}
@@ -427,16 +433,24 @@ export const DashboardPage: React.FC = () => {
                   <span>Karbonhidrat: {recipeDetail.carbs}g</span>
                   <span>Yağ: {recipeDetail.fat}g</span>
                 </div>
-                {recipeDetail.ingredients && (
+                {recipeDetail.ingredients.length > 0 && (
                   <div className="recipe-modal__section">
                     <h3>Malzemeler</h3>
-                    <p style={{ whiteSpace: 'pre-line' }}>{recipeDetail.ingredients}</p>
+                    <ul className="recipe-modal__list">
+                      {recipeDetail.ingredients.map((ing, i) => (
+                        <li key={i} className="recipe-modal__list-item">{ing}</li>
+                      ))}
+                    </ul>
                   </div>
                 )}
-                {recipeDetail.instructions && (
+                {recipeDetail.instructions.length > 0 && (
                   <div className="recipe-modal__section">
                     <h3>Yapılış</h3>
-                    <p style={{ whiteSpace: 'pre-line' }}>{recipeDetail.instructions}</p>
+                    <ol className="recipe-modal__steps">
+                      {recipeDetail.instructions.map((step, i) => (
+                        <li key={i} className="recipe-modal__step">{step}</li>
+                      ))}
+                    </ol>
                   </div>
                 )}
               </>

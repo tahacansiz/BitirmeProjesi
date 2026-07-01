@@ -27,7 +27,7 @@ export const Header: React.FC = () => {
               <button
                 className="header__avatar-btn"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                aria-label="User menu"
+                aria-label="Kullanıcı menüsü"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2"/>
@@ -40,13 +40,13 @@ export const Header: React.FC = () => {
                     onClick={() => { navigate('/profile'); setIsMenuOpen(false); }}
                     className="header__dropdown-item"
                   >
-                    My Profile
+                    Profilim
                   </button>
                   <button
                     onClick={handleLogout}
                     className="header__dropdown-item header__dropdown-item--danger"
                   >
-                    Logout
+                    Çıkış Yap
                   </button>
                 </div>
               )}
@@ -57,4 +57,3 @@ export const Header: React.FC = () => {
     </header>
   );
 };
-
